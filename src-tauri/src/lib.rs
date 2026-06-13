@@ -210,6 +210,46 @@ fn list_projects() -> Result<Vec<Project>, String> {
     Ok(out)
 }
 
+/// Starts the Jarvis Python assistant in a new console window.
+/// Returns "started", "already_running", or an error.
+#[tauri::command]
+fn start_jarvis() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::net::TcpStream;
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+        use std::time::Duration;
+
+        // If port 8765 is open, Jarvis WebSocket server is already running
+        let already_running = TcpStream::connect_timeout(
+            &"127.0.0.1:8765".parse().unwrap(),
+            Duration::from_millis(300),
+        ).is_ok();
+
+        if already_running {
+            return Ok("already_running".to_string());
+        }
+
+        // PYTHONUTF8=1 fixes emoji output in Windows cmd (cp1252 -> utf-8)
+        // cmd /k keeps the window open on crash so errors are visible
+        Command::new("cmd")
+            .args([
+                "/k",
+                r"C:\Users\diobe\Documents\jarvis\venv311\Scripts\python.exe C:\Users\diobe\Documents\jarvis\jarvis.py",
+            ])
+            .env("PYTHONUTF8", "1")
+            .current_dir(r"C:\Users\diobe\Documents\jarvis")
+            .creation_flags(CREATE_NEW_CONSOLE)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+
+        Ok("started".to_string())
+    }
+    #[cfg(not(target_os = "windows"))]
+    Ok("unsupported".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -220,7 +260,8 @@ pub fn run() {
             close_obsidian,
             list_projects,
             open_ssh,
-            open_in_vscode
+            open_in_vscode,
+            start_jarvis
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

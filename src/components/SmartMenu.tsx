@@ -50,10 +50,11 @@ export default function SmartMenu({
   const [obsidianOpen, setObsidianOpen] = useState(false);
   const [view, setView] = useState<"menu" | "projects">("menu");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [hasInteracted, setHasInteracted] = useState(false);
 
   const activeHex = THEMES[active].hex;
-  const intro = !hasInteracted; // first menu load plays the long intro
+  // every view (menu / projects, including "back") replays the full intro:
+  // text fades in one by one and the connector lines draw in cursively
+  const intro = true;
 
   // items that get a connector line (depends on the view)
   const lineItems =
@@ -114,7 +115,6 @@ export default function SmartMenu({
   };
 
   const onMenuClick = (item: MenuItem) => {
-    setHasInteracted(true);
     if (item.kind === "projects") {
       select(item.themeIndex);
       enterProjects();
@@ -188,6 +188,7 @@ export default function SmartMenu({
     <>
       <style>{`
         @keyframes fadeInMenu { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes drawLine { to { stroke-dashoffset: 0; } }
       `}</style>
 
       {/* connector lines */}
@@ -213,20 +214,16 @@ export default function SmartMenu({
             fill="none"
             strokeOpacity={0.9}
             filter="url(#lineGlow)"
-            style={{ strokeDasharray: l.totalLen, strokeDashoffset: l.totalLen, transition: "stroke 0.5s ease" }}
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              from={l.totalLen}
-              to={0}
-              dur={`${LINE_DUR_S}s`}
-              begin={`${lineBegin(i)}s`}
-              fill="freeze"
-              calcMode="spline"
-              keySplines="0.4 0 0.2 1"
-              keyTimes="0;1"
-            />
-          </path>
+            style={{
+              strokeDasharray: l.totalLen,
+              strokeDashoffset: l.totalLen,
+              transition: "stroke 0.5s ease",
+              // CSS animation restarts on every (re)mount, so the cursive draw
+              // replays each time the page/view changes — unlike SMIL, whose
+              // begin time is anchored to the page-load timeline.
+              animation: `drawLine ${LINE_DUR_S}s cubic-bezier(0.4,0,0.2,1) ${lineBegin(i)}s both`,
+            }}
+          />
         ))}
       </svg>
 
@@ -295,7 +292,7 @@ export default function SmartMenu({
       {/* back button — fixed below the title bar so it never covers the traffic lights */}
       {view === "projects" && (
         <button
-          onClick={() => { setHasInteracted(true); setView("menu"); }}
+          onClick={() => { setView("menu"); }}
           className="fixed left-12 top-10 text-xs tracking-wide cursor-pointer transition-colors hover:brightness-125"
           style={{ zIndex: 6, color: activeHex, opacity: 0.8, animation: "fadeInMenu 0.4s ease forwards" }}
         >

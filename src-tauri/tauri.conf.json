@@ -13,10 +13,7 @@
     "windows": [
       {
         "title": "deskApp",
-        "width": 960,
-        "height": 540,
-        "x": 950,
-        "y": 0,
+        "fullscreen": true,
         "decorations": false,
         "resizable": false
       }
